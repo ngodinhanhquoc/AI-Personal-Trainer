@@ -1,0 +1,15 @@
+streamlit
+opencv-contrib-python
+numpy
+pandas
+scikit-learn
+mediapipe
+tensorflow
+protobuf==3.20.*
+h5py
+jax
+jaxlib
+streamlit-webrtc
+torch
+ultralytics
+seaborn
