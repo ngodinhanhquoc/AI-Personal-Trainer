@@ -1,9 +1,9 @@
+opencv-python-headless==4.11.0.86
 streamlit
 streamlit-webrtc
 tensorflow
 mediapipe
 numpy
-opencv-python-headless
 ultralytics
 torch
 scikit-learn
