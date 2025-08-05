@@ -9,6 +9,8 @@ import mediapipe as mp
 import tensorflow as tf
 from collections import deque
 import time
+from utils_overlay import draw_feedback_overlay
+
 
 warnings.filterwarnings('ignore')
 
@@ -671,6 +673,9 @@ def analyze_video_and_return_data(video_path, output_path="result/output.mp4"):
     prediction_threshold = 0.4
     frame_counter = 0
     INFERENCE_INTERVAL = 5
+    result = None
+    action = "DETECTING..."
+    confidence = 0.0
     last_predicted_action = "DETECTING..."
     last_confidence = 0.0
 
@@ -721,7 +726,7 @@ def analyze_video_and_return_data(video_path, output_path="result/output.mp4"):
                         last_predicted_action = "DETECTING..."
                         last_confidence = confidence
 
-                analysis_result = detector.analyze_exercise(
+                result = detector.analyze_exercise(
                     results,
                     foot_shoulder_thresholds=FOOT_SHOULDER_RATIO_THRESHOLDS,
                     knee_foot_thresholds=KNEE_FOOT_RATIO_THRESHOLDS,
@@ -729,55 +734,7 @@ def analyze_video_and_return_data(video_path, output_path="result/output.mp4"):
                 )
 
                 # --- Overlay giao diện ---
-                cv2.rectangle(image, (0, 0), (700, 160), (245, 117, 16), -1)
-                cv2.putText(image, f"MODE: {detector.current_exercise}", (10, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
-                cv2.putText(image, f"ACTION: {last_predicted_action.upper()} ({last_confidence:.2f})", (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
-
-                if detector.current_exercise == "Bicep Curl" and analysis_result:
-                    left = analysis_result['bicep_left_analyzer']
-                    right = analysis_result['bicep_right_analyzer']
-                    cv2.putText(image, f"LEFT REPS: {left.counter}", (10, 85), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
-                    cv2.putText(image, f"RIGHT REPS: {right.counter}", (280, 85), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
-                    cv2.putText(image, f"LEFT STAGE: {left.stage}", (280, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
-                    cv2.putText(image, f"RIGHT STAGE: {right.stage}", (480, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
-                    cv2.putText(image, f"L-STATUS: {left.feedback}", (10, 115), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0) if left.feedback == "GOOD" else (0, 0, 255), 2)
-                    cv2.putText(image, f"R-STATUS: {right.feedback}", (280, 115), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0) if right.feedback == "GOOD" else (0, 0, 255), 2)
-
-                elif detector.current_exercise == "Plank" and analysis_result:
-                    status = analysis_result['status']
-                    conf = analysis_result['confidence']
-                    color = (0, 255, 0) if status == "Correct" else (0, 0, 255)
-                    cv2.putText(image, f"STATUS: {status} ({conf:.2f})", (10, 85), cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2)
-
-                elif detector.current_exercise == "Squat" and analysis_result:
-                    cv2.putText(image, f"COUNT: {analysis_result['counter']}", (10, 85), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
-                    cv2.putText(image, f"STAGE: {analysis_result['stage']}", (150, 85), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
-                    foot_status = analysis_result['foot_placement']
-                    knee_status = analysis_result['knee_placement']
-                    cv2.putText(image, f"FOOT: {foot_status}", (10, 120), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0) if foot_status == "Correct" else (0, 0, 255), 2)
-                    cv2.putText(image, f"KNEE: {knee_status}", (200, 120), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0) if knee_status == "Correct" else (0, 0, 255), 2)
-
-                elif detector.current_exercise == "Lunge" and analysis_result:
-                    cv2.putText(image, f"COUNT: {analysis_result['counter']}", (10, 85), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
-                    cv2.putText(image, f"STAGE: {analysis_result['stage']} ({analysis_result['stage_confidence']:.2f})", (200, 85), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
-                    knee_err = analysis_result['knee_angle_error']
-                    pos_err = analysis_result['knee_over_toe_error']
-                    back_err = analysis_result['back_posture_error']
-                    cv2.putText(image, f"KNEE: {'GOOD' if not knee_err else 'KNEE ANGLE ERROR'}", (10, 115), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0) if not knee_err else (0, 0, 255), 2)
-                    cv2.putText(image, f"POS: {'GOOD' if not pos_err else 'KNEE OVER TOE'}", (200, 115), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0) if not pos_err else (0, 0, 255), 2)
-                    cv2.putText(image, f"BACK: {'GOOD' if not back_err else 'BACK ERROR'}", (350, 115), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0) if not back_err else (0, 0, 255), 2)
-
-                elif detector.current_exercise == "Situp" and analysis_result:
-                    cv2.putText(image, f"COUNT: {analysis_result['counter']}", (10, 85), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
-                    cv2.putText(image, f"STAGE: {analysis_result['stage'].upper()}", (220, 85), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
-                    cv2.putText(image, f"ANGLE: {analysis_result['body_angle']}", (420, 85), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
-                    back_err = analysis_result['back_angle_error']
-                    leg_err = analysis_result['leg_stability_error']
-                    fb_msg = detector.situp_analysis.get_feedback_message()
-                    cv2.putText(image, f"BACK: {'GOOD' if not back_err else 'TOO LOW'}", (10, 115), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0) if not back_err else (0, 0, 255), 2)
-                    cv2.putText(image, f"LEGS: {'STABLE' if not leg_err else 'UNSTABLE'}", (150, 115), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0) if not leg_err else (0, 0, 255), 2)
-                    cv2.putText(image, f"FEEDBACK: {fb_msg}", (10, 145), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0) if fb_msg == "Good form" else (0, 255, 255), 2)
-
+            image = draw_feedback_overlay(image, detector, result, action, confidence)
             image = cv2.resize(image, (1080, 720))
             out.write(image)
             frame_counter += 1
@@ -785,6 +742,106 @@ def analyze_video_and_return_data(video_path, output_path="result/output.mp4"):
     cap.release()
     out.release()
     return output_path
+
+def analyze_webcam(video_path, output_path="result/output.mp4"):
+    if not os.path.exists("result"):
+        os.makedirs("result")
+
+    ACTION_MODEL_PATH = 'model/best_model_2307.keras'
+    DETAIL_MODEL_PATHS = {
+        'bicep_model': "model/bicep_KNN_model.pkl", 'bicep_scaler': "model/bicep_input_scaler.pkl",
+        'plank_model': "model/plank_LR_model.pkl", 'plank_scaler': "model/plank_input_scaler.pkl",
+        'squat_model': "model/squat_LR_model.pkl",
+        'lunge_stage_model': "model/lunge_stage_SVC_model.pkl",
+        'lunge_error_model': "model/lunge_err_LR_model.pkl",
+        'lunge_scaler': "model/lunge_input_scaler.pkl"
+    }
+
+    VISIBILITY_THRESHOLD = 0.6
+    FOOT_SHOULDER_RATIO_THRESHOLDS = [1.2, 2.8]
+    KNEE_FOOT_RATIO_THRESHOLDS = {"up": [0.5, 1.0], "down": [0.7, 1.1]}
+
+    if not os.path.exists(ACTION_MODEL_PATH):
+        print(f"Lỗi: Không tìm thấy model {ACTION_MODEL_PATH}")
+        return None
+
+    action_model = tf.keras.models.load_model(ACTION_MODEL_PATH)
+    actions = np.array(['curl', 'lunge', 'plank', 'situp', 'squat'])
+    sequence = deque(maxlen=30)
+    prediction_threshold = 0.4
+    frame_counter = 0
+    INFERENCE_INTERVAL = 5
+    result = None
+    action = "DETECTING..."
+    confidence = 0.0
+    last_predicted_action = "DETECTING..."
+    last_confidence = 0.0
+
+    detector = ExerciseDetector(DETAIL_MODEL_PATHS)
+    cap = cv2.VideoCapture(video_path)
+    if not cap.isOpened():
+        print(f"Lỗi: Không thể mở video tại {video_path}")
+        return None
+
+    # Ghi video dạng .webm cho Streamlit hiển thị
+    output_path = output_path.replace(".mp4", ".webm")
+    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    out = cv2.VideoWriter(output_path, cv2.VideoWriter_fourcc(*'VP80'), fps, (1080, 720))
+
+    mp_pose = mp.solutions.pose
+    mp_drawing = mp.solutions.drawing_utils
+
+    with mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5) as pose:
+        while cap.isOpened():
+            ret, frame = cap.read()
+            if not ret:
+                break
+
+            image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            image.flags.writeable = False
+            results = pose.process(image)
+            image.flags.writeable = True
+            image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+
+            if results.pose_landmarks:
+                mp_drawing.draw_landmarks(image, results.pose_landmarks, mp_pose.POSE_CONNECTIONS)
+
+                keypoints = extract_keypoints_for_sequence(results)
+                sequence.append(keypoints)
+
+                if len(sequence) == 30 and frame_counter % INFERENCE_INTERVAL == 0:
+                    res = action_model.predict(np.expand_dims(list(sequence), axis=0), verbose=0)[0]
+                    confidence = np.max(res)
+                    if confidence > prediction_threshold:
+                        action = actions[np.argmax(res)]
+                        if last_predicted_action != action:
+                            detector.set_exercise_type(action.replace('curl', 'Bicep Curl').title())
+                        last_predicted_action = action
+                        last_confidence = confidence
+                    else:
+                        last_predicted_action = "DETECTING..."
+                        last_confidence = confidence
+
+                result = detector.analyze_exercise(
+                    results,
+                    foot_shoulder_thresholds=FOOT_SHOULDER_RATIO_THRESHOLDS,
+                    knee_foot_thresholds=KNEE_FOOT_RATIO_THRESHOLDS,
+                    visibility_threshold=VISIBILITY_THRESHOLD
+                )
+
+                # --- Overlay giao diện ---
+            frame = draw_feedback_overlay(frame, detector, result, action, confidence)
+            image = cv2.resize(image, (1080, 720))
+            out.write(image)
+            frame_counter += 1
+
+    
+    return frame
+
+
+
 
 if __name__ == "__main__":
     main()
