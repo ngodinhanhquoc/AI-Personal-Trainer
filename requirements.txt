@@ -3,6 +3,6 @@ streamlit-webrtc
 tensorflow
 mediapipe
 numpy
-opencv-python
+opencv-python-headless
 ultralytics
 torch
