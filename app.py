@@ -122,13 +122,22 @@ os.makedirs(output_dir, exist_ok=True)
 if mode == "📹 Webcam Realtime":
     st.warning("⚠️ Hãy cho phép trình duyệt sử dụng webcam.")
     webrtc_streamer(
-        key=f"realtime-{selected_model_name}",
-        mode=WebRtcMode.SENDRECV,
-        video_transformer_factory=lambda: VideoTransformer(selected_model_path),
-        media_stream_constraints={"video": True, "audio": False},
-        rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
-        async_processing=True,
-    )
+    key=f"realtime-{selected_model_name}",
+    mode=WebRtcMode.SENDRECV,
+    video_transformer_factory=lambda: VideoTransformer(selected_model_path),
+    media_stream_constraints={"video": True, "audio": False},
+    rtc_configuration={
+        "iceServers": [
+            {
+                "urls": ["turn:relay1.expressturn.com:3480"],
+                "username": "000000002069813180",
+                "credential": "2wVEU7gh3vX6qyz0pzQVT8JNRYk="
+            }
+        ]
+    },
+    async_processing=True,
+)
+
 
 # --- UPLOAD VIDEO ---
 elif mode == "📤 Upload Video":
